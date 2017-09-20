@@ -26,10 +26,12 @@ class PyJWT(PyJWS):
             'verify_exp': True,
             'verify_nbf': True,
             'verify_iat': True,
+            'verify_jti': False,
             'verify_aud': True,
             'verify_iss': True,
             'require_exp': False,
             'require_iat': False,
+            'require_jti': False,
             'require_nbf': False
         }
 
@@ -113,6 +115,9 @@ class PyJWT(PyJWS):
         if 'iat' in payload and options.get('verify_iat'):
             self._validate_iat(payload, now, leeway)
 
+        if 'jti' in payload and options.get('verify_jti'):
+            self._validate_jti(payload)
+
         if 'nbf' in payload and options.get('verify_nbf'):
             self._validate_nbf(payload, now, leeway)
 
@@ -132,6 +137,9 @@ class PyJWT(PyJWS):
         if options.get('require_iat') and payload.get('iat') is None:
             raise MissingRequiredClaimError('iat')
 
+        if options.get('require_jti') and payload.get('jti') is None:
+            raise MissingRequiredClaimError('jti')
+
         if options.get('require_nbf') and payload.get('nbf') is None:
             raise MissingRequiredClaimError('nbf')
 
@@ -140,6 +148,9 @@ class PyJWT(PyJWS):
             int(payload['iat'])
         except ValueError:
             raise InvalidIssuedAtError('Issued At claim (iat) must be an integer.')
+
+    def _validate_jti(self, payload):
+        raise NotImplementedError
 
     def _validate_nbf(self, payload, now, leeway):
         try:
