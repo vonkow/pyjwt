@@ -358,79 +358,48 @@ class TestJWT:
         with pytest.raises(InvalidIssuerError):
             jwt.decode(token, 'secret', issuer=issuer)
 
-    def test_skip_check_audience(self, jwt):
+    def test_skip_check_fields(self, jwt):
+        kayvees = (
+            ('aud', 'urn:me'),
+            ('exp', datetime.utcnow() - timedelta(days=1)),
+            ('iat', datetime.utcnow() + timedelta(days=1)),
+            ('nbf', datetime.utcnow() + timedelta(days=1)),
+        )
+        for kv in kayvees:
+            self._skip_check_field(jwt, *kv)
+
+    def _skip_check_field(self, jwt, key, val):
         payload = {
             'some': 'payload',
-            'aud': 'urn:me',
+            key: val,
         }
         token = jwt.encode(payload, 'secret')
-        jwt.decode(token, 'secret', options={'verify_aud': False})
+        verify = 'verify_{}'.format(key)
+        jwt.decode(token, 'secret', options={verify: False})
 
-    def test_skip_check_exp(self, jwt):
+    def test_decode_should_raise_error_if_missing_fields_are_required(self, jwt):
+        fields = ['exp', 'iat', 'nbf']
+        for field in fields:
+            self._decode_should_raise_error_if_missing_field_is_required(jwt, field)
+
+    def _decode_should_raise_error_if_missing_field_is_required(self, jwt, field):
         payload = {
             'some': 'payload',
-            'exp': datetime.utcnow() - timedelta(days=1)
-        }
-        token = jwt.encode(payload, 'secret')
-        jwt.decode(token, 'secret', options={'verify_exp': False})
-
-    def test_decode_should_raise_error_if_exp_required_but_not_present(self, jwt):
-        payload = {
-            'some': 'payload',
-            # exp not present
+            # field not present
         }
         token = jwt.encode(payload, 'secret')
 
+        require_field = 'require_{}'.format(field)
         with pytest.raises(MissingRequiredClaimError) as exc:
-            jwt.decode(token, 'secret', options={'require_exp': True})
+            jwt.decode(token, 'secret', options={require_field: True})
 
-        assert exc.value.claim == 'exp'
-
-    def test_decode_should_raise_error_if_iat_required_but_not_present(self, jwt):
-        payload = {
-            'some': 'payload',
-            # iat not present
-        }
-        token = jwt.encode(payload, 'secret')
-
-        with pytest.raises(MissingRequiredClaimError) as exc:
-            jwt.decode(token, 'secret', options={'require_iat': True})
-
-        assert exc.value.claim == 'iat'
-
-    def test_decode_should_raise_error_if_nbf_required_but_not_present(self, jwt):
-        payload = {
-            'some': 'payload',
-            # nbf not present
-        }
-        token = jwt.encode(payload, 'secret')
-
-        with pytest.raises(MissingRequiredClaimError) as exc:
-            jwt.decode(token, 'secret', options={'require_nbf': True})
-
-        assert exc.value.claim == 'nbf'
+        assert exc.value.claim == field
 
     def test_skip_check_signature(self, jwt):
         token = ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
                  ".eyJzb21lIjoicGF5bG9hZCJ9"
                  ".4twFt5NiznN84AWoo1d7KO1T_yoc0Z6XOpOVswacPZA")
         jwt.decode(token, 'secret', options={'verify_signature': False})
-
-    def test_skip_check_iat(self, jwt):
-        payload = {
-            'some': 'payload',
-            'iat': datetime.utcnow() + timedelta(days=1)
-        }
-        token = jwt.encode(payload, 'secret')
-        jwt.decode(token, 'secret', options={'verify_iat': False})
-
-    def test_skip_check_nbf(self, jwt):
-        payload = {
-            'some': 'payload',
-            'nbf': datetime.utcnow() + timedelta(days=1)
-        }
-        token = jwt.encode(payload, 'secret')
-        jwt.decode(token, 'secret', options={'verify_nbf': False})
 
     def test_custom_json_encoder(self, jwt):
 
